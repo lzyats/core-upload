@@ -1,0 +1,70 @@
+# 上传配置（本地）
+upload:
+  uploadType: local
+  serverUrl: http://www.baidu.com
+
+# 上传配置（七牛云）
+upload:
+  uploadType: kodo
+  serverUrl: http://www.baidu.com
+  accessKey: accessKey
+  secretKey: secretKey
+  bucket: im-oss
+  prefix: alpaca
+  region: http://up-z2.qiniu.com
+
+# 上传配置（minio）
+upload:
+  uploadType: minio
+  serverUrl: http://www.baidu.com
+  accessKey: accessKey
+  secretKey: secretKey
+  bucket: im-oss
+  prefix: alpaca
+
+# 上传配置（阿里云）
+upload:
+  uploadType: oss
+  serverUrl: http://www.baidu.com
+  accessKey: accessKey
+  secretKey: secretKey
+  bucket: im-oss
+  prefix: alpaca
+  region: oss-cn-chengdu.aliyuncs.com
+
+# 上传配置（腾讯云）
+# 注意：cos->数据处理->媒体处理->开通
+upload:
+  uploadType: cos
+  serverUrl: http://www.baidu.com
+  accessKey: accessKey
+  secretKey: secretKey
+  bucket: im-1252581236
+  prefix: alpaca
+  region: ap-beijing
+
+# 上传配置（fast）
+upload:
+  uploadType: fast
+  serverUrl: http://127.0.0.1/upload
+
+# 上传配置
+fdfs:
+  so-timeout: 6000
+  connect-timeout: 6000
+  thumb-image:             #缩略图生成参数
+    width: 150
+    height: 150
+  tracker-list:            #TrackerList参数,支持多个
+    - 192.168.1.126:22122
+  pool:
+    #从池中借出的对象的最大数目（配置为-1表示不限制）
+    max-total: 200
+    #获取连接时的最大等待毫秒数(默认配置为5秒)
+    max-wait-millis: 5000
+    #每个key最大连接数
+    max-total-per-key: 50
+    #每个key对应的连接池最大空闲连接数
+    max-idle-per-key: 10
+    #每个key对应的连接池最小空闲连接数
+    max_idle_per_key: 5
