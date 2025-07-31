@@ -112,7 +112,7 @@ public class UploadCosServiceImpl extends UploadBaseService implements UploadSer
     public UploadFileVo uploadFile(MultipartFile file) {
         String fileName = getFileName(file);
         String fileKey = getFileKey(prefix);
-        fileKey=appendFileExtension(fileName,fileKey);
+        //fileKey=appendFileExtension(fileName,fileKey);
         // 3 生成 cos 客户端。
         COSClient client = null;
         try {

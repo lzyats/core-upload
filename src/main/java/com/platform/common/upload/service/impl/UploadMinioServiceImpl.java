@@ -17,7 +17,24 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.InputStream;
 import java.util.List;
+import cn.hutool.crypto.SecureUtil;
+import cn.hutool.crypto.digest.HMac;
+import cn.hutool.crypto.digest.HmacAlgorithm;
+import java.util.*;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import cn.hutool.crypto.SecureUtil;
+import cn.hutool.crypto.digest.HMac;
+import cn.hutool.crypto.digest.HmacAlgorithm;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Date;
+import java.util.TimeZone;
+import java.text.SimpleDateFormat;
 /**
  * MinIO 上传
  */
@@ -74,14 +91,64 @@ public class UploadMinioServiceImpl extends UploadBaseService implements UploadS
 
     @Override
     public Dict getFileToken() {
-        String fileName = getFileName();
-        String fileKey = getFileKey(prefix, fileName);
-        return Dict.create()
-                .set("uploadType", UploadTypeEnum.MINIO)
-                .set("serverUrl", serverUrl)
-                .set("bucket", bucket)
-                .set("fileKey", fileKey)
-                .set("filePath", serverUrl + FileNameUtil.UNIX_SEPARATOR + bucket + FileNameUtil.UNIX_SEPARATOR + fileKey);
+        try {
+            // 1. 生成文件名和存储路径
+            String fileName = getFileName();
+            String fileKey = getFileKey(prefix, fileName);
+
+            // 2. 设置过期时间（30分钟后，UTC时间）
+            Date expiration = new Date(System.currentTimeMillis() + 30 * 60 * 1000);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            String expirationStr = sdf.format(expiration);
+
+            // 3. 使用 Jackson 构建 Policy 文档（替代 fastjson）
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode policyObj = mapper.createObjectNode();
+            policyObj.put("expiration", expirationStr); // 过期时间
+
+            ArrayNode conditions = mapper.createArrayNode();
+            // 限制存储桶
+            ArrayNode bucketCondition = mapper.createArrayNode();
+            bucketCondition.add("eq").add("$bucket").add(bucket);
+            conditions.add(bucketCondition);
+
+            // 限制文件路径（key）
+            ArrayNode keyCondition = mapper.createArrayNode();
+            keyCondition.add("eq").add("$key").add(fileKey);
+            conditions.add(keyCondition);
+
+            // 限制文件大小（0-1GB）
+            ArrayNode sizeCondition = mapper.createArrayNode();
+            sizeCondition.add("content-length-range").add(0).add(1024 * 1024 * 1024);
+            conditions.add(sizeCondition);
+
+            policyObj.set("conditions", conditions);
+
+            // 4. 对 Policy 进行 Base64 编码
+            String policyJson = mapper.writeValueAsString(policyObj);
+            String encodedPolicy = Base64.getEncoder().encodeToString(policyJson.getBytes(StandardCharsets.UTF_8));
+
+            // 5. 使用 secretKey 对 encodedPolicy 进行 HMAC-SHA1 签名
+            HMac hmac = SecureUtil.hmac(HmacAlgorithm.HmacSHA1, secretKey.getBytes(StandardCharsets.UTF_8));
+            String signature = hmac.digestHex(encodedPolicy);
+
+            // 6. 返回表单所需参数
+            return Dict.create()
+                    .set("uploadType", UploadTypeEnum.MINIO)
+                    .set("serverUrl", serverUrl + "/" + bucket) // 表单提交地址
+                    .set("accessKey", accessKey)
+                    .set("policy", encodedPolicy)
+                    .set("signature", signature)
+                    .set("fileKey", fileKey)
+                    .set("filePath", serverUrl + "/" + bucket + "/" + fileKey);
+        } catch (JsonProcessingException e) {
+            log.error("生成MinIO Policy JSON失败", e);
+            throw new RuntimeException("生成文件上传凭证失败");
+        } catch (Exception e) {
+            log.error("生成MinIO表单上传凭证失败", e);
+            throw new RuntimeException("生成文件上传凭证失败");
+        }
     }
 
     @Override
@@ -91,7 +158,7 @@ public class UploadMinioServiceImpl extends UploadBaseService implements UploadS
             String fileName = getFileName(file);
             String fileKey = getFileKey(prefix);
 
-            fileKey=appendFileExtension(fileName,fileKey);
+            //fileKey=appendFileExtension(fileName,fileKey);
 
             InputStream inputStream = file.getInputStream();
             client.putObject(PutObjectArgs.builder()
