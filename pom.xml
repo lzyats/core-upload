@@ -77,6 +77,13 @@
             <version>8.4.6</version>
         </dependency>
 
+        <!-- Apache Commons Codec -->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.15</version>
+        </dependency>
+
         <!-- fastDFS -->
         <dependency>
             <groupId>com.github.tobato</groupId>

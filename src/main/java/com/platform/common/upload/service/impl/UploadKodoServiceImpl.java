@@ -81,6 +81,7 @@ public class UploadKodoServiceImpl extends UploadBaseService implements UploadSe
 
     @Override
     public Dict getFileToken() {
+        log.error("bucket:{}",bucket);
         String fileName = getFileName();
         String fileKey = getFileKey(prefix, fileName);
         String token = getToken(fileKey);

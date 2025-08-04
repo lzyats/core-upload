@@ -2,12 +2,19 @@ package com.platform.common.upload.service.impl;
 
 import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.lang.Dict;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.platform.common.upload.enums.UploadTypeEnum;
 import com.platform.common.upload.service.UploadService;
 import com.platform.common.upload.vo.UploadFileVo;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.codec.digest.HmacUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
@@ -16,25 +23,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.InputStream;
-import java.util.List;
-import cn.hutool.crypto.SecureUtil;
-import cn.hutool.crypto.digest.HMac;
-import cn.hutool.crypto.digest.HmacAlgorithm;
-import java.util.*;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import cn.hutool.crypto.SecureUtil;
-import cn.hutool.crypto.digest.HMac;
-import cn.hutool.crypto.digest.HmacAlgorithm;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
-import java.util.Date;
-import java.util.TimeZone;
-import java.text.SimpleDateFormat;
+import java.util.List;
 /**
  * MinIO 上传
  */
@@ -96,57 +90,73 @@ public class UploadMinioServiceImpl extends UploadBaseService implements UploadS
             String fileName = getFileName();
             String fileKey = getFileKey(prefix, fileName);
 
-            // 2. 设置过期时间（30分钟后，UTC时间）
-            Date expiration = new Date(System.currentTimeMillis() + 30 * 60 * 1000);
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-            String expirationStr = sdf.format(expiration);
+            String region = "us-east-1"; // MinIO 区域（需与实际配置一致）
 
-            // 3. 使用 Jackson 构建 Policy 文档（替代 fastjson）
+            // 2. 时间参数（AWS4 签名核心要素）
+            ZonedDateTime utcNow = ZonedDateTime.now(ZoneId.of("UTC"));
+            String amzDate = utcNow.format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"));
+            String dateStamp = utcNow.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+            // 3. AWS4 签名基础参数
+            String algorithm = "AWS4-HMAC-SHA256";
+            String credentialScope = String.format("%s/%s/s3/aws4_request", dateStamp, region);
+            String amzCredential = String.format("%s/%s", accessKey, credentialScope);
+
+            // 4. 构建 Policy 文档
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode policyObj = mapper.createObjectNode();
-            policyObj.put("expiration", expirationStr); // 过期时间
+            policyObj.put("expiration", utcNow.plusMinutes(30).format(DateTimeFormatter.ISO_INSTANT));
 
             ArrayNode conditions = mapper.createArrayNode();
-            // 限制存储桶
-            ArrayNode bucketCondition = mapper.createArrayNode();
-            bucketCondition.add("eq").add("$bucket").add(bucket);
-            conditions.add(bucketCondition);
-
-            // 限制文件路径（key）
-            ArrayNode keyCondition = mapper.createArrayNode();
-            keyCondition.add("eq").add("$key").add(fileKey);
-            conditions.add(keyCondition);
-
-            // 限制文件大小（0-1GB）
-            ArrayNode sizeCondition = mapper.createArrayNode();
-            sizeCondition.add("content-length-range").add(0).add(1024 * 1024 * 1024);
-            conditions.add(sizeCondition);
+            conditions.add(mapper.createArrayNode().add("eq").add("$bucket").add(bucket));
+            conditions.add(mapper.createArrayNode().add("eq").add("$key").add(fileKey));
+            conditions.add(mapper.createArrayNode().add("content-length-range").add(0).add(1024 * 1024 * 1024));
+            conditions.add(mapper.createArrayNode().add("eq").add("$x-amz-algorithm").add(algorithm));
+            conditions.add(mapper.createArrayNode().add("eq").add("$x-amz-credential").add(amzCredential));
+            conditions.add(mapper.createArrayNode().add("eq").add("$x-amz-date").add(amzDate));
 
             policyObj.set("conditions", conditions);
 
-            // 4. 对 Policy 进行 Base64 编码
+            // 5. Policy 编码
             String policyJson = mapper.writeValueAsString(policyObj);
             String encodedPolicy = Base64.getEncoder().encodeToString(policyJson.getBytes(StandardCharsets.UTF_8));
 
-            // 5. 使用 secretKey 对 encodedPolicy 进行 HMAC-SHA1 签名
-            HMac hmac = SecureUtil.hmac(HmacAlgorithm.HmacSHA1, secretKey.getBytes(StandardCharsets.UTF_8));
-            String signature = hmac.digestHex(encodedPolicy);
+            // 6. 生成 AWS4 签名密钥（关键修正：字符串转字节数组）
+            byte[] kSecret = ("AWS4" + secretKey).getBytes(StandardCharsets.UTF_8);
+            byte[] kDate = HmacUtils.hmacSha256(kSecret, dateStamp.getBytes(StandardCharsets.UTF_8)); // 字符串转字节数组
+            byte[] kRegion = HmacUtils.hmacSha256(kDate, region.getBytes(StandardCharsets.UTF_8)); // 字符串转字节数组
+            byte[] kService = HmacUtils.hmacSha256(kRegion, "s3".getBytes(StandardCharsets.UTF_8)); // 字符串转字节数组
+            byte[] signingKey = HmacUtils.hmacSha256(kService, "aws4_request".getBytes(StandardCharsets.UTF_8)); // 字符串转字节数组
 
-            // 6. 返回表单所需参数
+            // 7. 计算签名（关键修正：字符串转字节数组）
+            String stringToSign = String.format("%s\n%s\n%s\n%s",
+                    algorithm,
+                    amzDate,
+                    credentialScope,
+                    DigestUtils.sha256Hex(encodedPolicy));
+
+            byte[] stringToSignBytes = stringToSign.getBytes(StandardCharsets.UTF_8); // 字符串转字节数组
+            String signature = Hex.encodeHexString(HmacUtils.hmacSha256(signingKey, stringToSignBytes));
+            log.info("x-amz-credential: {}", amzCredential);
+
+            // 8. 返回参数
             return Dict.create()
                     .set("uploadType", UploadTypeEnum.MINIO)
-                    .set("serverUrl", serverUrl + "/" + bucket) // 表单提交地址
-                    .set("accessKey", accessKey)
+                    .set("serverUrl", serverUrl + "/" + bucket)
+                    .set("x-amz-algorithm", algorithm)
+                    .set("x-amz-date", amzDate)
+                    .set("x-amz-credential", amzCredential)
                     .set("policy", encodedPolicy)
                     .set("signature", signature)
                     .set("fileKey", fileKey)
-                    .set("filePath", serverUrl + "/" + bucket + "/" + fileKey);
+                    .set("accessKey", accessKey)
+                    .set("filePath", serverUrl + "/" + bucket + "/" + fileKey)
+                    .set("region", region);
         } catch (JsonProcessingException e) {
             log.error("生成MinIO Policy JSON失败", e);
             throw new RuntimeException("生成文件上传凭证失败");
         } catch (Exception e) {
-            log.error("生成MinIO表单上传凭证失败", e);
+            log.error("生成MinIO AWS4签名失败", e);
             throw new RuntimeException("生成文件上传凭证失败");
         }
     }
@@ -158,7 +168,7 @@ public class UploadMinioServiceImpl extends UploadBaseService implements UploadS
             String fileName = getFileName(file);
             String fileKey = getFileKey(prefix);
 
-            //fileKey=appendFileExtension(fileName,fileKey);
+            fileKey=appendFileExtension(fileName,fileKey);
 
             InputStream inputStream = file.getInputStream();
             client.putObject(PutObjectArgs.builder()
