@@ -81,7 +81,6 @@ public class UploadKodoServiceImpl extends UploadBaseService implements UploadSe
 
     @Override
     public Dict getFileToken() {
-        log.error("bucket:{}",bucket);
         String fileName = getFileName();
         String fileKey = getFileKey(prefix, fileName);
         String token = getToken(fileKey);
@@ -99,6 +98,7 @@ public class UploadKodoServiceImpl extends UploadBaseService implements UploadSe
         String fileKey = getFileKey(prefix);
         fileKey=appendFileExtension(fileName,fileKey);
         String token = getToken(fileKey);
+
         Response response = null;
         try {
             UploadManager uploadManager = new UploadManager(new com.qiniu.storage.Configuration());
@@ -120,6 +120,7 @@ public class UploadKodoServiceImpl extends UploadBaseService implements UploadSe
         String fileKey = getFileKey(prefix);
         fileKey=appendFileExtension(fileName,fileKey);
         String token = getToken(fileKey);
+
         Response response = null;
         try {
             UploadManager uploadManager = new UploadManager(new com.qiniu.storage.Configuration());
