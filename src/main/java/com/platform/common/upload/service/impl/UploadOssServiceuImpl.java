@@ -9,7 +9,7 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.PolicyConditions;
 import com.platform.common.upload.enums.UploadTypeEnum;
-import com.platform.common.upload.service.UploadService;
+import com.platform.common.upload.service.UploadServiceu;
 import com.platform.common.upload.vo.UploadFileVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,40 +27,40 @@ import java.util.List;
  * 阿里云上传
  */
 @Slf4j
-@Service("uploadOssService")
+@Service("uploadOssServiceu")
 @Configuration
-@ConditionalOnProperty(prefix = "upload", name = "uploadType", havingValue = "oss")
-public class UploadOssServiceImpl extends UploadBaseService implements UploadService {
+@ConditionalOnProperty(prefix = "uploadu", name = "uploadType", havingValue = "oss")
+public class UploadOssServiceuImpl extends UploadBaseService implements UploadServiceu {
 
     /**
      * 服务端域名
      */
-    @Value("${upload.serverUrl}")
+    @Value("${uploadu.serverUrl}")
     private String serverUrl;
     /**
      * accessKey
      */
-    @Value("${upload.accessKey}")
+    @Value("${uploadu.accessKey}")
     private String accessKey;
     /**
      * secretKey
      */
-    @Value("${upload.secretKey}")
+    @Value("${uploadu.secretKey}")
     private String secretKey;
     /**
      * bucket
      */
-    @Value("${upload.bucket}")
+    @Value("${uploadu.bucket}")
     private String bucket;
     /**
      * region
      */
-    @Value("${upload.region}")
+    @Value("${uploadu.region}")
     private String region;
     /**
      * prefix
      */
-    @Value("${upload.prefix}")
+    @Value("${uploadu.prefix}")
     private String prefix;
 
     /**

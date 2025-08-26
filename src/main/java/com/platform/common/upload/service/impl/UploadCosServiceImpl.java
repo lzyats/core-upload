@@ -82,8 +82,14 @@ public class UploadCosServiceImpl extends UploadBaseService implements UploadSer
     }
 
     @Override
-    public Dict getFileToken() {
+    public Dict getFileToken(String fileExt) {
         String fileName = getFileName();
+        // 如果fileExt不为空，则添加后缀
+        if (fileExt != null && !fileExt.trim().isEmpty()) {
+            // 处理fileExt可能包含的点号，确保只添加一个点
+            String ext = fileExt.startsWith(".") ? fileExt : "." + fileExt;
+            fileName += ext;
+        }
         String fileKey = getFileKey(prefix, fileName);
         String fileHost;
         COSClient client = null;

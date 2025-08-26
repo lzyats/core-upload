@@ -84,10 +84,16 @@ public class UploadMinioServiceImpl extends UploadBaseService implements UploadS
     }
 
     @Override
-    public Dict getFileToken() {
+    public Dict getFileToken(String fileExt) {
         try {
             // 1. 生成文件名和存储路径
             String fileName = getFileName();
+            // 如果fileExt不为空，则添加后缀
+            if (fileExt != null && !fileExt.trim().isEmpty()) {
+                // 处理fileExt可能包含的点号，确保只添加一个点
+                String ext = fileExt.startsWith(".") ? fileExt : "." + fileExt;
+                fileName += ext;
+            }
             String fileKey = getFileKey(prefix, fileName);
 
             String region = "us-east-1"; // MinIO 区域（需与实际配置一致）

@@ -42,7 +42,7 @@ public class UploadLocalServiceImpl extends UploadBaseService implements UploadS
     }
 
     @Override
-    public Dict getFileToken() {
+    public Dict getFileToken(String fileExt) {
         return Dict.create()
                 .set("uploadType", UploadTypeEnum.LOCAL);
     }

@@ -39,7 +39,7 @@ public class UploadFastServiceImpl extends UploadBaseService implements UploadSe
     }
 
     @Override
-    public Dict getFileToken() {
+    public Dict getFileToken(String fileExt) {
         return Dict.create()
                 .set("uploadType", UploadTypeEnum.LOCAL);
     }

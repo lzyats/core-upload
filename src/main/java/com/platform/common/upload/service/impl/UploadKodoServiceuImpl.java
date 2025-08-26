@@ -3,7 +3,7 @@ package com.platform.common.upload.service.impl;
 import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.lang.Dict;
 import com.platform.common.upload.enums.UploadTypeEnum;
-import com.platform.common.upload.service.UploadService;
+import com.platform.common.upload.service.UploadServiceu;
 import com.platform.common.upload.vo.UploadFileVo;
 import com.qiniu.common.QiniuException;
 import com.qiniu.http.Response;
@@ -24,40 +24,40 @@ import java.util.List;
  * 七牛云上传
  */
 @Slf4j
-@Service("uploadKodoService")
+@Service("uploadKodoServiceu")
 @Configuration
-@ConditionalOnProperty(prefix = "upload", name = "uploadType", havingValue = "kodo")
-public class UploadKodoServiceImpl extends UploadBaseService implements UploadService {
+@ConditionalOnProperty(prefix = "uploadu", name = "uploadType", havingValue = "kodo")
+public class UploadKodoServiceuImpl extends UploadBaseService implements UploadServiceu {
 
     /**
      * 服务端域名
      */
-    @Value("${upload.serverUrl}")
+    @Value("${uploadu.serverUrl}")
     private String serverUrl;
     /**
      * accessKey
      */
-    @Value("${upload.accessKey}")
+    @Value("${uploadu.accessKey}")
     private String accessKey;
     /**
      * secretKey
      */
-    @Value("${upload.secretKey}")
+    @Value("${uploadu.secretKey}")
     private String secretKey;
     /**
      * bucket
      */
-    @Value("${upload.bucket}")
+    @Value("${uploadu.bucket}")
     private String bucket;
     /**
      * region
      */
-    @Value("${upload.region}")
+    @Value("${uploadu.region}")
     private String region;
     /**
      * prefix
      */
-    @Value("${upload.prefix:}")
+    @Value("${uploadu.prefix:}")
     private String prefix;
 
     /**
@@ -82,6 +82,12 @@ public class UploadKodoServiceImpl extends UploadBaseService implements UploadSe
     @Override
     public Dict getFileToken(String fileExt) {
         String fileName = getFileName();
+        // 如果fileExt不为空，则添加后缀
+        if (fileExt != null && !fileExt.trim().isEmpty()) {
+            // 处理fileExt可能包含的点号，确保只添加一个点
+            String ext = fileExt.startsWith(".") ? fileExt : "." + fileExt;
+            fileName += ext;
+        }
         String fileKey = getFileKey(prefix, fileName);
         String token = getToken(fileKey);
         return Dict.create()

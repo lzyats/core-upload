@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * 上传服务
  */
-public interface UploadService {
+public interface UploadServiceu {
 
     /**
      * 获取服务端域名
