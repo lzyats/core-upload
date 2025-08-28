@@ -2,12 +2,12 @@ package com.platform.common.upload.service.impl;
 
 import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.lang.Dict;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.platform.common.upload.enums.UploadTypeEnum;
-import com.platform.common.upload.service.UploadService;
+import com.platform.common.upload.service.UploadServiceu;
 import com.platform.common.upload.vo.UploadFileVo;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.http.Method;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,50 +19,46 @@ import java.io.File;
 import java.io.InputStream;
 import java.time.ZonedDateTime;
 import java.util.List;
-
-
-import io.minio.http.Method;
-
 import java.util.concurrent.TimeUnit;
+
 /**
  * MinIO 上传
  */
 @Slf4j
-@Service("uploadMinioService")
+@Service("uploadMinioServiceu")
 @Configuration
 @ConditionalOnProperty(prefix = "upload", name = "uploadType", havingValue = "minio")
-public class UploadMinioServiceImpl extends UploadBaseService implements UploadService {
+public class UploadMinioServiceuImpl extends UploadBaseService implements UploadServiceu {
 
     /**
      * 服务端域名
      */
-    @Value("${upload.serverUrl}")
+    @Value("${uploadu.serverUrl}")
     private String serverUrl;
 
     /**
      * accessKey
      */
-    @Value("${upload.accessKey}")
+    @Value("${uploadu.accessKey}")
     private String accessKey;
 
     /**
      * secretKey
      */
-    @Value("${upload.secretKey}")
+    @Value("${uploadu.secretKey}")
     private String secretKey;
 
     /**
      * bucket
      */
-    @Value("${upload.bucket}")
+    @Value("${uploadu.bucket}")
     private String bucket;
 
     /**
      * prefix
      */
-    @Value("${upload.prefix}")
+    @Value("${uploadu.prefix}")
     private String prefix;
-
 
     // 预签名URL的有效期（例如：30分钟）
     private static final int URL_EXPIRY_MINUTES = 30;
