@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service("uploadMinioServiceu")
 @Configuration
-@ConditionalOnProperty(prefix = "upload", name = "uploadType", havingValue = "minio")
+@ConditionalOnProperty(prefix = "uploadu", name = "uploadType", havingValue = "minio")
 public class UploadMinioServiceuImpl extends UploadBaseService implements UploadServiceu {
 
     /**
