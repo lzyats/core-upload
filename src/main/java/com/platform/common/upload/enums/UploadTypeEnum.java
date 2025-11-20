@@ -35,6 +35,11 @@ public enum UploadTypeEnum {
     MINIO("minio", "MINIO"),
 
     /**
+     * AWS
+     */
+    AWS("aws", "AWS"),
+
+    /**
      * 本地local
      */
     LOCAL("local", "本地上传"),
