@@ -70,7 +70,7 @@ public class UploadAwsServiceImpl extends UploadBaseService implements UploadSer
     /**
      * CloudFront
      */
-    @Value("${uploadu.cloudfront}")
+    @Value("${upload.cloudfront}")
     private String cf;
 
     // 预签名URL的有效期（例如：30分钟）
